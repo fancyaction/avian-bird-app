@@ -5,41 +5,64 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 )
 
 // GetBird receives url to send to Flask API
 func GetBird(c *gin.Context) {
+	errors := make(chan error, 2)
+	predictChan := make(chan Prediction)
+	natureServeChan := make(chan NatureServeAPIResponse)
+
 	url := c.Query("image_url")
 	var prediction Prediction
 	var natureServeData NatureServeAPIResponse
+	var wg sync.WaitGroup
 
-	predictChan := make(chan Prediction)
+	wg.Add(2)
 
 	go func() {
-		err := getPrediction(url, predictChan)
+		defer wg.Done()
+
+		res, err := getPrediction(url)
+		predictChan <- res
+
 		if err != nil {
 			HandleErr(c, err)
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"success": false, "errors": "Could not retrieve prediction"})
-			return
+			errors <- err
 		}
 	}()
 
 	prediction = <-predictChan
 
-	natureServeChan := make(chan NatureServeAPIResponse)
-
 	go func() {
-		err := getBirdDetails(prediction.Name, natureServeChan)
+		defer wg.Done()
+
+		res, err := getBirdDetails(prediction.Name)
+		natureServeChan <- res
 		if err != nil {
 			HandleErr(c, err)
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"success": false, "errors": "Could not retrieve bird details"})
-			return
+			errors <- err
 		}
 	}()
 
 	natureServeData = <-natureServeChan
+
+	go func() {
+		wg.Wait()
+		close(predictChan)
+		close(natureServeChan)
+		close(errors)
+	}()
+
+	for err := range errors {
+		fmt.Println("requestError: ", err)
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"success": false, "errors": err.Error()})
+		return
+	}
+
 	var payload SendBirdPayload
 	if len(natureServeData.Results) != 0 {
 		payload = SendBirdPayload{
@@ -83,7 +106,7 @@ func GetLocation(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"success": false, "errors": "Could not retrieve location details"})
 	}
 
-	err = json.NewDecoder(response.Body).Decode(&data)
+	_ = json.NewDecoder(response.Body).Decode(&data)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
