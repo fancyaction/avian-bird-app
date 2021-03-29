@@ -45,8 +45,8 @@ func getPrediction(fileURL string) (Prediction, error) {
 	return data, nil
 }
 
-func getQuery(name string) NatureServeParams {
-	return NatureServeParams{
+func getPostBody(name string) *bytes.Buffer {
+	requestQuery := NatureServeParams{
 		CriteriaType: "species",
 		TextCriteria: []TextCriteria{{
 			ParamType:    "textSearch",
@@ -55,6 +55,10 @@ func getQuery(name string) NatureServeParams {
 			Operator:     "equals",
 		}},
 	}
+
+	postBody, _ := json.Marshal(requestQuery)
+
+	return bytes.NewBuffer(postBody)
 }
 
 // send bird name and get bird details from NatureServe api
@@ -62,7 +66,8 @@ func getBirdDetails(name string) (NatureServeAPIResponse, error) {
 	var data NatureServeAPIResponse
 	targetURL := "https://explorer.natureserve.org/api/data/speciesSearch"
 
-	requestQuery := getQuery(name)
+	postBody := getPostBody(name)
+	response, err := http.Post(targetURL, "application/json", postBody)
 
 	postBody, _ := json.Marshal(requestQuery)
 
