@@ -27,20 +27,17 @@ func GetBird(c *gin.Context) {
 	}
 
 	speciesInfo, err := getBirdDetails(prediction.Name)
-
 	if err != nil {
 		handleErr(c, err)
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"success": false, "errors": err.Error()})
 		return
 	}
 
-	data := gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"msg":     "prediction found",
 		"data":    birdRecord{prediction.ID, prediction.Name, speciesInfo},
-	}
-
-	c.JSON(http.StatusOK, data)
+	})
 }
 
 // GetLocation receives lat,lng to send to eBird API
