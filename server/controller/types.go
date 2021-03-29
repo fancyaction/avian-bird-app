@@ -1,12 +1,5 @@
 package controller
 
-//SendBirdPayload response to send client
-type SendBirdPayload struct {
-	ID          int           `json:"id"`
-	Name        string        `json:"name"`
-	SpeciesInfo SpeciesGlobal `json:"species_info,omitempty"`
-}
-
 //Prediction response from api
 type Prediction struct {
 	ID   int

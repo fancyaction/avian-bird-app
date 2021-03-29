@@ -5,87 +5,42 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"sync"
 
 	"github.com/gin-gonic/gin"
 )
 
+type birdRecord struct {
+	ID          int
+	Name        string
+	SpeciesInfo interface{}
+}
+
 // GetBird receives url to send to Flask API
 func GetBird(c *gin.Context) {
-	errors := make(chan error, 2)
-	predictChan := make(chan Prediction)
-	natureServeChan := make(chan NatureServeAPIResponse)
-
 	url := c.Query("image_url")
-	var prediction Prediction
-	var natureServeData NatureServeAPIResponse
-	var wg sync.WaitGroup
 
-	wg.Add(2)
-
-	go func() {
-		defer wg.Done()
-
-		res, err := getPrediction(url)
-		predictChan <- res
-
-		if err != nil {
-			HandleErr(c, err)
-			errors <- err
-		}
-	}()
-
-	prediction = <-predictChan
-
-	go func() {
-		defer wg.Done()
-
-		res, err := getBirdDetails(prediction.Name)
-		natureServeChan <- res
-		if err != nil {
-			HandleErr(c, err)
-			errors <- err
-		}
-	}()
-
-	natureServeData = <-natureServeChan
-
-	go func() {
-		wg.Wait()
-		close(predictChan)
-		close(natureServeChan)
-		close(errors)
-	}()
-
-	for err := range errors {
-		fmt.Println("requestError: ", err)
+	prediction, err := getPrediction(url)
+	if err != nil {
+		handleErr(c, err)
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"success": false, "errors": err.Error()})
 		return
 	}
 
-	var payload SendBirdPayload
-	if len(natureServeData.Results) != 0 {
-		payload = SendBirdPayload{
-			ID:          prediction.ID,
-			Name:        prediction.Name,
-			SpeciesInfo: natureServeData.Results[0].SpeciesGlobal,
-		}
+	speciesInfo, err := getBirdDetails(prediction.Name)
 
-	} else {
-		payload = SendBirdPayload{
-			ID:   prediction.ID,
-			Name: prediction.Name,
-		}
+	if err != nil {
+		handleErr(c, err)
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"success": false, "errors": err.Error()})
+		return
 	}
 
 	data := gin.H{
 		"success": true,
 		"msg":     "prediction found",
-		"data":    payload,
+		"data":    birdRecord{prediction.ID, prediction.Name, speciesInfo},
 	}
 
 	c.JSON(http.StatusOK, data)
-
 }
 
 // GetLocation receives lat,lng to send to eBird API
@@ -102,7 +57,7 @@ func GetLocation(c *gin.Context) {
 
 	response, err := client.Do(req)
 	if err != nil {
-		HandleErr(c, err)
+		handleErr(c, err)
 		c.JSON(http.StatusNotFound, gin.H{"success": false, "errors": "Could not retrieve location details"})
 	}
 
