@@ -10,11 +10,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func handleErr(c *gin.Context, err error) error {
+func abortWithError(c *gin.Context, err error) {
 	if err != nil {
 		c.Error(err)
 	}
-	return err
+	c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"success": false, "errors": err.Error()})
 }
 
 //send image and get prediction from Pytorch API server

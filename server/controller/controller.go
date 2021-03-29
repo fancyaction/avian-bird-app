@@ -21,15 +21,13 @@ func GetBird(c *gin.Context) {
 
 	prediction, err := getPrediction(url)
 	if err != nil {
-		handleErr(c, err)
-		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"success": false, "errors": err.Error()})
+		abortWithError(c, err)
 		return
 	}
 
 	speciesInfo, err := getBirdDetails(prediction.Name)
 	if err != nil {
-		handleErr(c, err)
-		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"success": false, "errors": err.Error()})
+		abortWithError(c, err)
 		return
 	}
 
@@ -54,8 +52,8 @@ func GetLocation(c *gin.Context) {
 
 	response, err := client.Do(req)
 	if err != nil {
-		handleErr(c, err)
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "errors": "Could not retrieve location details"})
+		abortWithError(c, err)
+		return
 	}
 
 	_ = json.NewDecoder(response.Body).Decode(&data)
