@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"os"
 
@@ -22,6 +21,7 @@ func HandleErr(c *gin.Context, err error) error {
 //send image and get prediction from Pytorch API server
 func getPrediction(fileURL string) (Prediction, error) {
 	var data Prediction
+
 	baseURL := os.Getenv("FLASK_API_BASE_URL")
 	targetURL := baseURL + "/predict"
 
@@ -36,7 +36,6 @@ func getPrediction(fileURL string) (Prediction, error) {
 		err := errors.New("Prediction not found")
 		return data, err
 	}
-	fmt.Println("response: ", response.Body, response.StatusCode)
 
 	defer response.Body.Close()
 
@@ -62,28 +61,29 @@ func getPostBody(name string) *bytes.Buffer {
 }
 
 // send bird name and get bird details from NatureServe api
-func getBirdDetails(name string) (NatureServeAPIResponse, error) {
+func getBirdDetails(name string) (SpeciesGlobal, error) {
 	var data NatureServeAPIResponse
 	targetURL := "https://explorer.natureserve.org/api/data/speciesSearch"
 
 	postBody := getPostBody(name)
 	response, err := http.Post(targetURL, "application/json", postBody)
 
-	postBody, _ := json.Marshal(requestQuery)
-
-	response, err := http.Post(targetURL, "application/json", bytes.NewBuffer(postBody))
-
 	if err != nil {
-		return data, err
+		return SpeciesGlobal{}, err
 	} else if response.StatusCode != 200 {
 		err := errors.New("species data not found")
-		return data, err
+		return SpeciesGlobal{}, err
 	}
-	fmt.Println("response: ", response.Body, response.StatusCode)
 
 	defer response.Body.Close()
 
 	_ = json.NewDecoder(response.Body).Decode(&data)
+	if len(data.Results) == 0 {
+		err := errors.New("species data not found")
+		return SpeciesGlobal{}, err
+	}
 
-	return data, nil
+	speciesInfo := data.Results[0].SpeciesGlobal
+
+	return speciesInfo, nil
 }
