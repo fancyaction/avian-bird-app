@@ -28,7 +28,8 @@ type SpeciesGlobal struct {
 
 // Result from each entry in API response
 type Result struct {
-	SpeciesGlobal SpeciesGlobal `json:"speciesGlobal"`
+	SpeciesGlobal     SpeciesGlobal `json:"speciesGlobal"`
+	PrimaryCommonName string        `json:"primaryCommonName"`
 }
 
 // NatureServeAPIResponse response from NatureServe API

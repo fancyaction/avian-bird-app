@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -49,14 +50,28 @@ func getPostBody(name string) *bytes.Buffer {
 		TextCriteria: []TextCriteria{{
 			ParamType:    "textSearch",
 			SearchToken:  name,
-			MatchAgainst: "allNames",
-			Operator:     "equals",
+			MatchAgainst: "primaryCommonName",
+			Operator:     "similarTo",
 		}},
 	}
 
 	postBody, _ := json.Marshal(requestQuery)
 
 	return bytes.NewBuffer(postBody)
+}
+
+func getSpeciesInfo(results []Result, matchAgainst string) (SpeciesGlobal, error) {
+	if len(results) == 0 {
+		return SpeciesGlobal{}, errors.New("species data not found")
+	}
+
+	for _, record := range results {
+		if strings.Contains(record.PrimaryCommonName, matchAgainst) {
+			return record.SpeciesGlobal, nil
+		}
+	}
+
+	return SpeciesGlobal{}, errors.New("species data not found")
 }
 
 // send bird name and get bird details from NatureServe api
@@ -77,12 +92,11 @@ func getBirdDetails(name string) (SpeciesGlobal, error) {
 	defer response.Body.Close()
 
 	_ = json.NewDecoder(response.Body).Decode(&data)
-	if len(data.Results) == 0 {
-		err := errors.New("species data not found")
+
+	speciesInfo, err := getSpeciesInfo(data.Results, name)
+	if err != nil {
 		return SpeciesGlobal{}, err
 	}
-
-	speciesInfo := data.Results[0].SpeciesGlobal
 
 	return speciesInfo, nil
 }
