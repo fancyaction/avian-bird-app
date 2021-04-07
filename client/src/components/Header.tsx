@@ -2,8 +2,10 @@ import React, { useMemo } from 'react';
 import Typical from 'react-typical';
 import birdsList from 'utils/birdsList';
 
-const getSteps = () => {
-    const steps = [];
+type stepArr = Array<string | number>;
+
+const getSteps = (): stepArr => {
+    const steps: stepArr = [];
     birdsList.forEach((bird) => {
         steps.push(bird.name, 2500);
     });
@@ -11,7 +13,7 @@ const getSteps = () => {
     return steps;
 };
 
-export default function Header(props) {
+export default function Header(): JSX.Element {
     const steps = useMemo(() => getSteps(), []);
 
     return (
@@ -21,7 +23,6 @@ export default function Header(props) {
                 style={{
                     backgroundImage:
                         "url('https://images.unsplash.com/photo-1506220926022-cc5c12acdb35?ixlib=rb-1.2.1&ixid=MXwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHw%3D&auto=format&fit=crop&w=1650&q=80')",
-                    alt: 'bird',
                 }}
             >
                 <span className="absolute w-full h-full bg-black opacity-20"></span>
