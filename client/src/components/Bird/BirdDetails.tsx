@@ -1,21 +1,11 @@
 import React, { useCallback, useState } from 'react';
 import parse from 'html-react-parser';
 import SpeciesInfoTable from './SpeciesInfoTable';
-import { useBreakpoints, Button, Card, CardContent } from 'utils';
+import { useBreakpoints, Button } from 'utils';
 import axios from 'axios';
-import ExampleImage from 'assets/examplebird.jpg';
+import BirdImage, { BirdImageProps } from './BirdImage';
 
-const BirdImage = ({ src, alt }) => (
-    <div className="flex justify-center">
-        <img
-            src={src}
-            alt={alt}
-            className="h-auto max-w-full align-middle border-none rounded shadow-lg max-h-72 md:max-h-40"
-        />
-    </div>
-);
-
-const EBirdRedirectButton = ({ name }) => {
+const EBirdRedirectButton: React.FC<{ name: string }> = ({ name }) => {
     const redirectToEBirdUrl = useCallback(() => {
         const config = {
             params: {
@@ -40,8 +30,27 @@ const EBirdRedirectButton = ({ name }) => {
     return <Button onClick={redirectToEBirdUrl} label="Read More" />;
 };
 
-const MobileView = ({ record, imageUrl, imageAlt }) => {
-    const [showMore, setShowMore] = useState(false);
+type BirdRecord = {
+    name: string;
+    species_info: {
+        synonyms: string;
+        otherCommonNames: string[];
+        kingdom: string;
+        phylum: string;
+        taxclass: string;
+        taxorder: string;
+        family: string;
+        genus: string;
+        informalTaxonomy: string;
+        taxonomicComments: string;
+    };
+};
+interface ViewProps extends BirdImageProps {
+    record: BirdRecord;
+}
+
+const MobileView: React.FC<ViewProps> = ({ record, imageUrl, imageAlt }) => {
+    const [showMore, setShowMore] = useState<boolean>(false);
     const { name, species_info: speciesInfo } = record;
     const hasSpeciesInfo = 0 < Object.keys(speciesInfo).length;
     const { taxonomicComments: description, ...otherInfo } = speciesInfo;
@@ -53,7 +62,9 @@ const MobileView = ({ record, imageUrl, imageAlt }) => {
             ) : (
                 <>
                     <h1 className="py-2 text-2xl font-bold text-green-800">{name}</h1>
-                    <p className="mt-4 text-sm text-black break-all md:break-all ">{hasSpeciesInfo ? parse(description) : ''}</p>
+                    <p className="mt-4 text-sm text-black break-all md:break-all ">
+                        {hasSpeciesInfo ? parse(description) : ''}
+                    </p>
                 </>
             ),
         [description, hasSpeciesInfo, name, otherInfo, showMore]
@@ -61,15 +72,17 @@ const MobileView = ({ record, imageUrl, imageAlt }) => {
 
     return (
         <div className="p-2">
-            {imageUrl && <BirdImage src={imageUrl} alt={imageAlt} />}
+            {imageUrl && <BirdImage imageUrl={imageUrl} imageAlt={imageAlt} />}
             <Content />
-            {hasSpeciesInfo && <Button onClick={() => setShowMore(!showMore)} label={showMore ? 'Hide Details' : 'Show Details'} />}
+            {hasSpeciesInfo && (
+                <Button onClick={() => setShowMore(!showMore)} label={showMore ? 'Hide Details' : 'Show Details'} />
+            )}
             <EBirdRedirectButton name={name} />
         </div>
     );
 };
 
-const DesktopView = ({ record, imageUrl, imageAlt }) => {
+const DesktopView: React.FC<ViewProps> = ({ record, imageUrl, imageAlt }) => {
     const { name, species_info: speciesInfo } = record;
     const hasSpeciesInfo = 0 < Object.keys(speciesInfo).length;
     const { taxonomicComments: description, ...otherInfo } = speciesInfo;
@@ -77,19 +90,23 @@ const DesktopView = ({ record, imageUrl, imageAlt }) => {
     return (
         <>
             <div className="flex flex-col items-center justify-center p-4">
-                {imageUrl && <BirdImage src={imageUrl} alt={imageAlt} />}
+                {imageUrl && <BirdImage imageUrl={imageUrl} imageAlt={imageAlt} />}
                 <h1 className="py-2 text-2xl font-bold text-green-800">{name}</h1>
-                <p className="mt-4 text-sm text-black break-all md:break-all ">{hasSpeciesInfo ? parse(description) : ''}</p>
+                <p className="mt-4 text-sm text-black break-all md:break-all ">
+                    {hasSpeciesInfo ? parse(description) : ''}
+                </p>
                 <EBirdRedirectButton name={name} />
             </div>
-            <div className="p-4">
-                {hasSpeciesInfo && <SpeciesInfoTable {...otherInfo} />}
-            </div>
+            <div className="p-4">{hasSpeciesInfo && <SpeciesInfoTable {...otherInfo} />}</div>
         </>
     );
 };
 
-const BirdDetails = ({ loading, ...props }) => {
+export interface BirdDetailsProps extends ViewProps {
+    loading: boolean;
+}
+
+const BirdDetails: React.FC<BirdDetailsProps> = ({ loading, ...props }) => {
     const { isXs, isSm } = useBreakpoints();
     const isMobile = isXs || isSm;
 
@@ -104,26 +121,4 @@ const BirdDetails = ({ loading, ...props }) => {
     return <DesktopView {...props} />;
 };
 
-const PlaceholderBird = () => (
-    <div className="flex flex-col items-center justify-center p-4">
-        <BirdImage src={ExampleImage} alt="Placeholder bird" />
-        <h1 className="py-2 text-2xl font-bold text-green-800">
-            Start by uploading an image via the "Send Prediction" button above
-        </h1>
-    </div>
-);
-
-export default function BirdCard({ imageUrl, imageAlt = 'Photo of bird', loading, record, children }) {
-    return (
-        <Card color="bg-teal-400">
-            <CardContent>
-                {!record && !loading ? (
-                    <PlaceholderBird />
-                ) : (
-                    <BirdDetails imageUrl={imageUrl} imageAlt={imageAlt} record={record} loading={loading} />
-                )}
-            </CardContent>
-            {children}
-        </Card>
-    );
-}
+export default BirdDetails;
